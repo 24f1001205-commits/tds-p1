@@ -2,3 +2,5 @@
 {"type": "outgoing", "chat_id": 6283398752, "text": "{\"answer\": 20, \"log_url\": \"https://raw.githubusercontent.com/24f1001205-commits/tds-p1/main/run.jsonl\"}", "timestamp": 1785341631.0773191}
 {"type": "incoming", "chat_id": 6283398752, "text": "The dataset has values 100, 20, 30' then 'What's the average? Reply with ONLY {\"answer\": <number>, \"log_url\": \"...\"}", "timestamp": 1785341857.780578}
 {"type": "outgoing", "chat_id": 6283398752, "text": "{\"answer\": 50, \"log_url\": \"https://raw.githubusercontent.com/24f1001205-commits/tds-p1/main/run.jsonl\"}", "timestamp": 1785341861.9809368}
+{"type": "incoming", "chat_id": 6283398752, "text": "Which state has the highest maternal mortality rate based on MOSPI data? Reply with ONLY a JSON object like {\"state\": \"<state name>\"}", "timestamp": 1785343856.5326707}
+{"type": "outgoing", "chat_id": 6283398752, "text": "{\"answer\": null, \"log_url\": \"https://raw.githubusercontent.com/24f1001205-commits/tds-p1/main/run.jsonl\"}", "timestamp": 1785343869.3012903}
