@@ -99,13 +99,26 @@ client = OpenAI(base_url="https://aipipe.org/openai/v1", api_key=AIPIPE_TOKEN)
 
 conversation_history: dict[int, list[dict]] = {}
 
+# IMPORTANT: the question's own example JSON is illustrative only, and its
+# shape varies per question (sometimes it already shows an "answer" key,
+# sometimes it shows only the bare payload, e.g. {"state": "..."} or
+# {"values": [...]}). Our reply envelope is ALWAYS {"answer": ..., "log_url":
+# ...} regardless of how the question phrases its example - so the model must
+# ALWAYS wrap its result under a top-level "answer" key, and must never decide
+# for itself whether wrapping is needed. We also enforce this in code below
+# (normalize_answer) as a fallback in case the model doesn't comply.
 SYSTEM_PROMPT = (
     "You are a careful data analyst. The user's LAST message asks a data-analysis "
-    "question and specifies exactly what JSON shape the final reply must have. "
+    "question and shows an example JSON shape for illustration only - regardless of "
+    "whether that example includes an \"answer\" key or not, you must ignore the "
+    "envelope shown and produce ONLY: {\"answer\": <value>}. "
+    "<value> should be shaped exactly as the question implies (a number, a string, "
+    "an object like {\"state\": \"...\"}, a list, etc.) - always nested under this "
+    "single top-level \"answer\" key. "
     "Work out the real answer using public data you know (e.g. MOSPI statistics) "
     "or arithmetic on numbers given in the message. "
-    "Reply with ONLY the raw JSON object the message asked for - no explanation, "
-    "no markdown, no code fences, nothing before or after it."
+    "Reply with ONLY that JSON object - no explanation, no markdown, no code fences, "
+    "nothing before or after it."
 )
 
 
@@ -128,6 +141,17 @@ def extract_json(text: str) -> dict:
         return json.loads(text[start:end + 1])
 
 
+def normalize_answer(parsed: dict):
+    """The model is instructed to always wrap its result in {"answer": ...},
+    but if it slips and returns a bare payload instead (e.g. {"state": "Bihar"}
+    with no "answer" key - which happens especially when the question's own
+    example JSON doesn't show an "answer" key), don't silently lose it to a
+    missing-key null. Treat the whole parsed object as the answer in that case."""
+    if isinstance(parsed, dict) and "answer" in parsed:
+        return parsed["answer"]
+    return parsed
+
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     chat_id = update.effective_chat.id
     user_text = update.message.text or ""
@@ -143,15 +167,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         )
         raw_reply = response.choices[0].message.content.strip()
         parsed = extract_json(raw_reply)
+        answer_value = normalize_answer(parsed)
     except Exception as e:
         log.exception("failed to get/parse a model reply")
         log_event({"type": "error", "chat_id": chat_id, "error": str(e)})
-        parsed = {"answer": None}  # never leave the grader without valid JSON
+        answer_value = None  # never leave the grader without valid JSON
 
     # Rebuild the final reply ourselves so it ALWAYS has exactly these two
     # keys, no matter what extra text/keys the model produced. Grading is
     # exact-match, so stray keys can break an otherwise-correct answer.
-    final = {"answer": parsed.get("answer"), "log_url": LOG_URL}
+    final = {"answer": answer_value, "log_url": LOG_URL}
     final_text = json.dumps(final)
 
     history.append({"role": "assistant", "content": final_text})
@@ -165,36 +190,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         asyncio.create_task(push_log())
 
 
-def _start_dummy_webserver() -> None:
-    """Render's free tier only offers Web Services, which require something
-    listening on $PORT - our bot doesn't naturally do that since it just
-    polls Telegram. This satisfies Render's port check with a no-op HTTP
-    server running in a background thread, so the real bot loop below is
-    unaffected. Not needed on a real Background Worker plan or another host."""
-    import threading
-    from http.server import BaseHTTPRequestHandler, HTTPServer
-
-    class Handler(BaseHTTPRequestHandler):
-        def do_GET(self):
-            self.send_response(200)
-            self.end_headers()
-            self.wfile.write(b"ok")
-
-        def log_message(self, *args):
-            pass  # keep Render's log output clean of health-check noise
-
-    port = int(os.environ.get("PORT", 10000))
-    server = HTTPServer(("0.0.0.0", port), Handler)
-    threading.Thread(target=server.serve_forever, daemon=True).start()
-    log.info("Dummy webserver listening on port %d (for Render's port check)", port)
-
-
 def main() -> None:
     if GIT_AUTO_PUSH and not (GITHUB_TOKEN and GITHUB_REPO):
         log.warning("GIT_AUTO_PUSH is true but GITHUB_TOKEN/GITHUB_REPO not both set - "
                      "log pushes will fail until you set them.")
-    if os.environ.get("PORT"):
-        _start_dummy_webserver()
     app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     log.info("Bot starting (polling)...")
