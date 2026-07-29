@@ -190,14 +190,40 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         asyncio.create_task(push_log())
 
 
+def _start_dummy_webserver() -> None:
+    """Render's free tier only offers Web Services, which require something
+    listening on $PORT - our bot doesn't naturally do that since it just
+    polls Telegram. This satisfies Render's port check with a no-op HTTP
+    server running in a background thread, so the real bot loop below is
+    unaffected. Not needed on a real Background Worker plan or another host."""
+    import threading
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b"ok")
+
+        def log_message(self, *args):
+            pass  # keep Render's log output clean of health-check noise
+
+    port = int(os.environ.get("PORT", 10000))
+    server = HTTPServer(("0.0.0.0", port), Handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    log.info("Dummy webserver listening on port %d (for Render's port check)", port)
+
+
 def main() -> None:
     if GIT_AUTO_PUSH and not (GITHUB_TOKEN and GITHUB_REPO):
         log.warning("GIT_AUTO_PUSH is true but GITHUB_TOKEN/GITHUB_REPO not both set - "
                      "log pushes will fail until you set them.")
+    if os.environ.get("PORT"):
+        _start_dummy_webserver()
     app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     log.info("Bot starting (polling)...")
-    app.run_polling()
+    app.run_polling(drop_pending_updates=True)
 
 
 if __name__ == "__main__":
