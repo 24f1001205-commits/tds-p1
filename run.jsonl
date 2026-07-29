@@ -6,3 +6,5 @@
 {"type": "outgoing", "chat_id": 6283398752, "text": "{\"answer\": null, \"log_url\": \"https://raw.githubusercontent.com/24f1001205-commits/tds-p1/main/run.jsonl\"}", "timestamp": 1785343869.3012903}
 {"type": "incoming", "chat_id": 6283398752, "text": "Which state has the highest maternal mortality rate based on MOSPI data? Reply with ONLY a JSON object like {\"state\": \"<state name>\"}", "timestamp": 1785344716.0102842}
 {"type": "outgoing", "chat_id": 6283398752, "text": "{\"answer\": null, \"log_url\": \"https://raw.githubusercontent.com/24f1001205-commits/tds-p1/main/run.jsonl\"}", "timestamp": 1785344732.8577704}
+{"type": "incoming", "chat_id": 6283398752, "text": "Forecast for these inputs: [165, 83, 132, 12, 182]. Reply with ONLY {\"values\": [<numbers>]}.", "timestamp": 1785344941.7934752}
+{"type": "outgoing", "chat_id": 6283398752, "text": "{\"answer\": null, \"log_url\": \"https://raw.githubusercontent.com/24f1001205-commits/tds-p1/main/run.jsonl\"}", "timestamp": 1785344958.9637132}
