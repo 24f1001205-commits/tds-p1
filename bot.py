@@ -100,25 +100,55 @@ client = OpenAI(base_url="https://aipipe.org/openai/v1", api_key=AIPIPE_TOKEN)
 conversation_history: dict[int, list[dict]] = {}
 
 # IMPORTANT: the question's own example JSON is illustrative only, and its
-# shape varies per question (sometimes it already shows an "answer" key,
-# sometimes it shows only the bare payload, e.g. {"state": "..."} or
-# {"values": [...]}). Our reply envelope is ALWAYS {"answer": ..., "log_url":
-# ...} regardless of how the question phrases its example - so the model must
-# ALWAYS wrap its result under a top-level "answer" key, and must never decide
-# for itself whether wrapping is needed. We also enforce this in code below
-# (normalize_answer) as a fallback in case the model doesn't comply.
+# shape varies per question. The example may or may not already show an
+# "answer" key wrapping the payload (e.g. sometimes {"answer": {"state": "..."},
+# "log_url": "..."}, sometimes just {"state": "..."}, "log_url": "..."} with no
+# "answer" key at all). Our reply envelope is ALWAYS {"answer": ..., "log_url":
+# ...} regardless of how the question's example is written - so the model must
+# always end up wrapping its computed value under a single top-level "answer"
+# key, no more and no less. Getting this wrong (double-wrapping, or not
+# wrapping at all) silently breaks an otherwise-correct answer under exact-
+# match grading, so the prompt below spells the rule out with explicit
+# worked examples rather than leaving it to inference. We also enforce this
+# in code below (normalize_answer) as a fallback in case the model doesn't
+# comply.
 SYSTEM_PROMPT = (
-    "You are a careful data analyst. The user's LAST message asks a data-analysis "
-    "question and shows an example JSON shape for illustration only - regardless of "
-    "whether that example includes an \"answer\" key or not, you must ignore the "
-    "envelope shown and produce ONLY: {\"answer\": <value>}. "
-    "<value> should be shaped exactly as the question implies (a number, a string, "
-    "an object like {\"state\": \"...\"}, a list, etc.) - always nested under this "
-    "single top-level \"answer\" key. "
-    "Work out the real answer using public data you know (e.g. MOSPI statistics) "
-    "or arithmetic on numbers given in the message. "
-    "Reply with ONLY that JSON object - no explanation, no markdown, no code fences, "
-    "nothing before or after it."
+    "You are a careful data analyst replying to an automated grader over Telegram. "
+    "The user's LAST message asks a data-analysis question and ends with a JSON "
+    "example that tells you the exact shape to use. Your job has two independent parts:\n\n"
+    "1. FIGURE OUT THE ANSWER VALUE.\n"
+    "   Look at the JSON example in the message and find what belongs under its "
+    "\"answer\" key (or, if the example has no \"answer\" key at all, treat the "
+    "whole example - minus any \"log_url\" field - as the answer value).\n"
+    "   This is the ONE piece you must compute yourself from public data "
+    "(e.g. MOSPI statistics) or arithmetic on numbers given in the message. "
+    "It can be a number, a string, an object, a list - whatever the example shows "
+    "in that position, with placeholder text like \"<state name>\" replaced by your "
+    "real computed answer.\n\n"
+    "2. WRAP IT EXACTLY ONCE.\n"
+    "   Your reply must be ONLY: {\"answer\": <the value from step 1>}\n"
+    "   Do NOT wrap it twice. Do NOT nest another \"answer\" key inside it. "
+    "The word \"answer\" must appear exactly once in your reply, as the single "
+    "top-level key.\n\n"
+    "Worked example - message ends with:\n"
+    '  {"answer": {"state": "<state name>"}, "log_url": "<...>"}\n'
+    "The answer value is whatever goes under \"answer\", i.e. {\"state\": \"...\"}. "
+    "Correct reply: {\"answer\": {\"state\": \"Assam\"}}\n"
+    'WRONG reply (double-wrapped): {"answer": {"answer": {"state": "Assam"}}}\n'
+    'WRONG reply (unwrapped): {"state": "Assam"}\n\n'
+    "Another worked example - message ends with:\n"
+    '  {"state": "<state name>", "log_url": "<...>"}   (no \"answer\" key shown at all)\n'
+    "Here the whole shown object (minus log_url) IS the answer value. "
+    "Correct reply: {\"answer\": {\"state\": \"Assam\"}}\n\n"
+    "Another worked example - message ends with:\n"
+    '  {"values": [<numbers>]}   (a list inside a named key, no \"answer\" key, no log_url shown)\n'
+    "The key name (here \"values\") is NOT \"answer\" and must be preserved exactly as shown - "
+    "do not drop it and reply with a bare list. "
+    "Correct reply: {\"answer\": {\"values\": [10.2, 20.4, 30.6]}}\n"
+    'WRONG reply (dropped the wrapper key): {"answer": [10.2, 20.4, 30.6]}\n\n'
+    "Never include \"log_url\" yourself - that is added by the system afterwards. "
+    "Reply with ONLY the JSON object from step 2 - no explanation, no markdown, "
+    "no code fences, nothing before or after it."
 )
 
 
@@ -128,17 +158,34 @@ def log_event(event: dict) -> None:
         f.write(json.dumps(event) + "\n")
 
 
-def extract_json(text: str) -> dict:
-    """Parse a JSON object out of the model's reply, tolerating stray text
-    or markdown fences around it."""
+def extract_json(text: str):
+    """Parse a JSON value out of the model's reply, tolerating stray text
+    or markdown fences around it. Normally the reply is an object
+    ({"answer": ...}), but if the model slips and replies with a bare
+    array (a real risk for list-shaped answers, e.g. {"values": [...]}
+    collapsed into just [...]), recover that too instead of raising and
+    silently losing the answer to the outer except-block's answer_value=None.
+    """
     text = text.strip()
     try:
         return json.loads(text)
     except json.JSONDecodeError:
-        start, end = text.find("{"), text.rfind("}")
-        if start == -1 or end == -1:
-            raise
-        return json.loads(text[start:end + 1])
+        pass
+
+    candidates = []
+    obj_start, obj_end = text.find("{"), text.rfind("}")
+    if obj_start != -1 and obj_end != -1 and obj_end > obj_start:
+        candidates.append(text[obj_start:obj_end + 1])
+    arr_start, arr_end = text.find("["), text.rfind("]")
+    if arr_start != -1 and arr_end != -1 and arr_end > arr_start:
+        candidates.append(text[arr_start:arr_end + 1])
+
+    for candidate in candidates:
+        try:
+            return json.loads(candidate)
+        except json.JSONDecodeError:
+            continue
+    raise json.JSONDecodeError("no valid JSON object or array found in reply", text, 0)
 
 
 def normalize_answer(parsed: dict):
@@ -146,9 +193,18 @@ def normalize_answer(parsed: dict):
     but if it slips and returns a bare payload instead (e.g. {"state": "Bihar"}
     with no "answer" key - which happens especially when the question's own
     example JSON doesn't show an "answer" key), don't silently lose it to a
-    missing-key null. Treat the whole parsed object as the answer in that case."""
+    missing-key null. Treat the whole parsed object as the answer in that case.
+
+    Also guard against the opposite slip: accidental double-wrapping, e.g.
+    {"answer": {"answer": {"state": "Bihar"}}}. If the value under "answer"
+    is itself a dict containing only a single "answer" key, unwrap one level -
+    this is never a legitimate answer shape on its own, only a wrapping
+    mistake."""
     if isinstance(parsed, dict) and "answer" in parsed:
-        return parsed["answer"]
+        value = parsed["answer"]
+        if isinstance(value, dict) and list(value.keys()) == ["answer"]:
+            value = value["answer"]
+        return value
     return parsed
 
 
