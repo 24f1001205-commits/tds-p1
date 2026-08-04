@@ -26,3 +26,6 @@
 {"type": "incoming", "chat_id": 6283398752, "text": "What is 15-20", "timestamp": 1785855543.511266}
 {"type": "error", "chat_id": 6283398752, "error": "Error code: 401 - {'message': 'Bearer token is invalid: JWTExpired: \"exp\" claim timestamp check failed'}", "timestamp": 1785855543.5699024}
 {"type": "outgoing", "chat_id": 6283398752, "text": "{\"answer\": null, \"log_url\": \"https://raw.githubusercontent.com/24f1001205-commits/tds-p1/main/run.jsonl\"}", "timestamp": 1785855543.5700493}
+{"type": "incoming", "chat_id": 6283398752, "text": "Y do u keep saying null?", "timestamp": 1785855551.0661998}
+{"type": "error", "chat_id": 6283398752, "error": "Error code: 401 - {'message': 'Bearer token is invalid: JWTExpired: \"exp\" claim timestamp check failed'}", "timestamp": 1785855551.1230977}
+{"type": "outgoing", "chat_id": 6283398752, "text": "{\"answer\": null, \"log_url\": \"https://raw.githubusercontent.com/24f1001205-commits/tds-p1/main/run.jsonl\"}", "timestamp": 1785855551.1232238}
