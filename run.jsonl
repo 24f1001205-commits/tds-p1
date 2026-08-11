@@ -44,3 +44,5 @@
 {"type": "outgoing", "chat_id": 6283398752, "text": "{\"answer\": {\"values\": [168.3, 84.66, 165.24, 12.24, 185.64]}, \"log_url\": \"https://raw.githubusercontent.com/24f1001205-commits/tds-p1/main/run.jsonl\"}", "timestamp": 1786073455.968541}
 {"type": "incoming", "chat_id": 6283398752, "text": "Which state has the lowest maternal mortality rate based on MOSPI data? Reply with ONLY a JSON object like {\"state\": \"<state name>\"}", "timestamp": 1786369587.47431}
 {"type": "outgoing", "chat_id": 6283398752, "text": "{\"answer\": {\"state\": \"Kerala\"}, \"log_url\": \"https://raw.githubusercontent.com/24f1001205-commits/tds-p1/main/run.jsonl\"}", "timestamp": 1786369602.1573248}
+{"type": "incoming", "chat_id": 6283398752, "text": "Which states has the lowest literacy rate? Reply with ONLY a JSON object like {\"states\": \"<state name>\"}", "timestamp": 1786421608.8913908}
+{"type": "outgoing", "chat_id": 6283398752, "text": "{\"answer\": {\"states\": \"Bihar\"}, \"log_url\": \"https://raw.githubusercontent.com/24f1001205-commits/tds-p1/main/run.jsonl\"}", "timestamp": 1786421618.687567}
