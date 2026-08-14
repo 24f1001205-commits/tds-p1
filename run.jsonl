@@ -62,3 +62,5 @@
 {"type": "outgoing", "chat_id": 64322470, "text": "{\"answer\": {\"date\": \"2023-06-09\"}, \"log_url\": \"https://raw.githubusercontent.com/24f1001205-commits/tds-p1/main/run.jsonl\"}", "timestamp": 1786602845.807382}
 {"type": "incoming", "chat_id": 6283398752, "text": "R u u", "timestamp": 1786675999.4096603}
 {"type": "outgoing", "chat_id": 6283398752, "text": "{\"answer\": \"Yes\", \"log_url\": \"https://raw.githubusercontent.com/24f1001205-commits/tds-p1/main/run.jsonl\"}", "timestamp": 1786676013.9328537}
+{"type": "incoming", "chat_id": 6283398752, "text": "Whats 1+20?", "timestamp": 1786715434.328778}
+{"type": "outgoing", "chat_id": 6283398752, "text": "{\"answer\": 21, \"log_url\": \"https://raw.githubusercontent.com/24f1001205-commits/tds-p1/main/run.jsonl\"}", "timestamp": 1786715444.5781496}
