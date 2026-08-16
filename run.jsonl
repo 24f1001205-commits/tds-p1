@@ -66,3 +66,5 @@
 {"type": "outgoing", "chat_id": 6283398752, "text": "{\"answer\": 21, \"log_url\": \"https://raw.githubusercontent.com/24f1001205-commits/tds-p1/main/run.jsonl\"}", "timestamp": 1786715444.5781496}
 {"type": "incoming", "chat_id": 6283398752, "text": "R u up?", "timestamp": 1786774709.629332}
 {"type": "outgoing", "chat_id": 6283398752, "text": "{\"answer\": \"Yes, I'm up.\", \"log_url\": \"https://raw.githubusercontent.com/24f1001205-commits/tds-p1/main/run.jsonl\"}", "timestamp": 1786774719.0608935}
+{"type": "incoming", "chat_id": 6283398752, "text": "Who is the former prime minister?", "timestamp": 1786861471.3270848}
+{"type": "outgoing", "chat_id": 6283398752, "text": "{\"answer\": \"Which country's former prime minister do you mean? Please specify the country or provide the context.\", \"log_url\": \"https://raw.githubusercontent.com/24f1001205-commits/tds-p1/main/run.jsonl\"}", "timestamp": 1786861484.267486}
